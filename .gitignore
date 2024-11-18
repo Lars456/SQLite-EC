@@ -9,7 +9,7 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 
-# Environment variables (if using dotenv for configuration)
+# Environment variables 
 .env
 
 # Operating system files

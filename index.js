@@ -46,6 +46,8 @@ app.post('/todos', (req, res) => {
 
 const { task, priority = "medium" } = req.body; // Default priority to "medium"
 const validPriorities = ["high", "medium", "low"];
+
+   
 const stmt = db.prepare('INSERT INTO todos (task, completed, priority) VALUES (?, ?, ?)');
   stmt.run([task, false, priority], function (err) {
     if (err) {
@@ -63,19 +65,31 @@ app.put('/todos/:id', (req, res) => {
 const id = parseInt(req.params.id);
 const todo = todos.find(t => t.id === id);
 
-if (!todo) {
- return res.status(404).send("To-Do item not found");
-  }
+db.get('SELECT * FROM todos WHERE id = ?', [id], (err, todo) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
 
-    todo.task = req.body.task || todo.task;
-  todo.completed = req.body.completed !== undefined ? req.body.completed : todo.completed;
-  todo.priority = req.body.priority || todo.priority;
-res.json(todo);
+    if (!todo) {
+      return res.status(404).send('To-Do item not found');
+    }
+
+   const task = req.body.task || todo.task;
+   const completed = req.body.completed !== undefined ? req.body.completed : todo.completed;
+   const priority = req.body.priority || todo.priority;
+   const stmt = db.prepare('UPDATE todos SET task = ?, completed = ?, priority = ? WHERE id = ?');
+    stmt.run([updatedTask, updatedCompleted, updatedPriority, id], function (err) {
+      if (err) {
+        return res.status(500).send(err.message);
+      } else {
+        res.json({ id, task: updatedTask, completed: updatedCompleted, priority: updatedPriority });
+      }
+    });
+  });
 });
 
 app.put('/todos/complete-all', (req, res) => {
-  todos.forEach(todo => {
-  todo.completed = true;
+ const stmt = db.prepare('UPDATE todos SET completed = 1');
 });
 res.status(200).json({ message: "All to-do items marked as completed." });
 });

@@ -1,4 +1,5 @@
 const express = require('express')
+const sqlite3 = require('sqlite3').verbose();
 const app = express()
 const port = 3000
 
@@ -49,21 +50,19 @@ const validPriorities = ["high", "medium", "low"];
 
    
 const stmt = db.prepare('INSERT INTO todos (task, completed, priority) VALUES (?, ?, ?)');
-  stmt.run([task, false, priority], function (err) {
-    if (err) {
-      res.status(500).send(err.message);
-    } else {
-      const newTodo = { id: this.lastID, task, completed: false, priority };
-      res.status(201).json(newTodo);
-    }
-  });
+  stmt.run([task, completed, priority, id], function (err) {
+  if (err) {
+    return res.status(500).send(err.message);
+  } else {
+    res.json({ id, task, completed, priority });
+  }
+});
 });
 
 
 // PUT /todos/:id - Update an existing to-do item
 app.put('/todos/:id', (req, res) => {
 const id = parseInt(req.params.id);
-const todo = todos.find(t => t.id === id);
 
 db.get('SELECT * FROM todos WHERE id = ?', [id], (err, todo) => {
     if (err) {
@@ -89,9 +88,13 @@ db.get('SELECT * FROM todos WHERE id = ?', [id], (err, todo) => {
 });
 
 app.put('/todos/complete-all', (req, res) => {
- const stmt = db.prepare('UPDATE todos SET completed = 1');
-});
-res.status(200).json({ message: "All to-do items marked as completed." });
+const stmt = db.prepare('UPDATE todos SET completed = 1');
+  stmt.run((err) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+    res.status(200).json({ message: "All to-do items marked as completed." });
+  });
 });
 
 
@@ -121,5 +124,5 @@ const index = todos.findIndex(t => t.id === id);
 
 
 app.listen(port, () => {
-console.log(Server is running on http://localhost:${port});
+console.log('Server is running on http://localhost:${port}');
 });

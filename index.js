@@ -98,11 +98,25 @@ res.status(200).json({ message: "All to-do items marked as completed." });
 app.delete('/todos/:id', (req, res) => {
 const id = parseInt(req.params.id);
 const index = todos.findIndex(t => t.id === id);
-if (index === -1) {
-    return res.status(404).send("To-Do item not found");
-  }
-  todos.splice(index, 1);
-  res.status(204).send();
+
+   db.get('SELECT * FROM todos WHERE id = ?', [id], (err, todo) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+      
+  if (!todo) {
+      return res.status(404).send('To-Do item not found');
+    }
+
+    const stmt = db.prepare('DELETE FROM todos WHERE id = ?');
+    stmt.run([id], function (err) {
+      if (err) {
+        return res.status(500).send(err.message);
+      } else {
+        res.status(204).send();
+      }
+    });
+  });
 });
 
 

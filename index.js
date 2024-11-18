@@ -6,44 +6,57 @@ const port = 3000
 app.use(express.json())
 
 
-// Question 1: Add a "Priority" Field to the To-Do API
-// Sample data
-let todos = [
-
-{ id: 1, task: "Learn Node.js", completed: true, priority: "medium"  },
-{ id: 1, task: "Learn how to cook", completed: false, priority: "medium"  },
-{ id: 2, task: "Build a REST API", completed: true, priority: "medium"  }
-];
+const db = new sqlite3.Database('./todos.db', (err) => {
+   if (err) {
+    console.error('Could not connect to SQLite database:', err.message);
+  } else {
+    console.log('Connected to SQLite database.');
+     
+  db.run(`CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task TEXT NOT NULL,
+      completed BOOLEAN NOT NULL,
+      priority TEXT NOT NULL
+    )`);
+   }
+});
 
 // GET /todos - Retrieve all to-do items
 app.get('/todos', (req, res) => {
   const { completed } = req.query;
+  let query = 'SELECT * FROM todos';
+  let params = [];
+
  if (completed !== undefined) {
-   const isCompleted = completed === 'true'; 
-   const filteredTodos = todos.filter(todo => todo.completed === isCompleted);
-    return res.json(filteredTodos);
+    query += ' WHERE completed = ?';
+    params = [completed === 'true' ? 1 : 0];
   }
 
-  res.json(todos);
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      res.status(500).send(err.message);
+    } else {
+      res.json(rows);
+    }
+  });
 });
-
 
 // POST /todos - Add a new to-do item
 app.post('/todos', (req, res) => {
 
 const { task, priority = "medium" } = req.body; // Default priority to "medium"
 const validPriorities = ["high", "medium", "low"];
-const newTodo = {
-
-id: todos.length + 1,
-task: req.body.task,
-completed: false,
-priority: priority
-};
-
-todos.push(newTodo);
-res.status(201).json(newTodo);
+const stmt = db.prepare('INSERT INTO todos (task, completed, priority) VALUES (?, ?, ?)');
+  stmt.run([task, false, priority], function (err) {
+    if (err) {
+      res.status(500).send(err.message);
+    } else {
+      const newTodo = { id: this.lastID, task, completed: false, priority };
+      res.status(201).json(newTodo);
+    }
+  });
 });
+
 
 // PUT /todos/:id - Update an existing to-do item
 app.put('/todos/:id', (req, res) => {
